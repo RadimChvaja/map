@@ -32,7 +32,7 @@
 <body>
 
 <div id="info">
-  Zoom in and click approximately where you lived (±5 km is enough). Your exact address is not needed.
+  Move your cursor and click approximately where you lived (±5 km is enough).
 </div>
 
 <div id="map"></div>
@@ -80,6 +80,7 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 
 var marker;
 var circle;
+var hoverCircle;
 var ukraineLayer;
 
 // 🇺🇦 hranice
@@ -98,7 +99,7 @@ fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/U
 
   });
 
-// 🔥 RANDOM POINT IN RADIUS
+// 🔥 random point (jitter)
 function randomPointInRadius(lat, lng, radiusKm) {
   const radiusInDegrees = radiusKm / 111;
 
@@ -113,7 +114,7 @@ function randomPointInRadius(lat, lng, radiusKm) {
   return { lat: newLat, lng: newLng };
 }
 
-// 🔥 inside UA check
+// 🔥 inside UA
 function isInsideUkraine(latlng) {
   if (!ukraineLayer) return false;
 
@@ -152,7 +153,23 @@ function isInsideUkraine(latlng) {
   return inside;
 }
 
-// 🔥 CLICK EVENT
+// 🔥 LIVE PREVIEW CIRCLE
+map.on('mousemove', function(e) {
+
+  if (hoverCircle) {
+    hoverCircle.setLatLng(e.latlng);
+  } else {
+    hoverCircle = L.circle(e.latlng, {
+      radius: 5000,
+      color: '#3388ff',
+      fillOpacity: 0.05,
+      interactive: false
+    }).addTo(map);
+  }
+
+});
+
+// 🔥 CLICK
 map.on('click', function(e) {
 
   if (!isInsideUkraine(e.latlng)) {
@@ -168,7 +185,7 @@ map.on('click', function(e) {
     marker = L.marker(e.latlng).addTo(map);
   }
 
-  // circle (5 km)
+  // circle
   if (circle) {
     map.removeLayer(circle);
   }
@@ -176,10 +193,10 @@ map.on('click', function(e) {
   circle = L.circle(e.latlng, {
     radius: 5000,
     color: '#3388ff',
-    fillOpacity: 0.1
+    fillOpacity: 0.15
   }).addTo(map);
 
-  // 🔥 jitter
+  // jitter
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
@@ -188,7 +205,6 @@ map.on('click', function(e) {
   document.getElementById("info").innerHTML =
     "Selected area (~5 km radius). Redirecting...";
 
-  // redirect
   var url = new URL(surveyURL);
   url.searchParams.set("lat", lat);
   url.searchParams.set("lng", lng);
