@@ -79,9 +79,10 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
 }).addTo(map);
 
 var marker;
+var circle;
 var ukraineLayer;
 
-// hranice UA
+// 🇺🇦 hranice
 fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
   .then(res => res.json())
   .then(data => {
@@ -97,6 +98,22 @@ fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/U
 
   });
 
+// 🔥 RANDOM POINT IN RADIUS
+function randomPointInRadius(lat, lng, radiusKm) {
+  const radiusInDegrees = radiusKm / 111;
+
+  const u = Math.random();
+  const v = Math.random();
+  const w = radiusInDegrees * Math.sqrt(u);
+  const t = 2 * Math.PI * v;
+
+  const newLat = lat + w * Math.cos(t);
+  const newLng = lng + w * Math.sin(t) / Math.cos(lat * Math.PI / 180);
+
+  return { lat: newLat, lng: newLng };
+}
+
+// 🔥 inside UA check
 function isInsideUkraine(latlng) {
   if (!ukraineLayer) return false;
 
@@ -135,6 +152,7 @@ function isInsideUkraine(latlng) {
   return inside;
 }
 
+// 🔥 CLICK EVENT
 map.on('click', function(e) {
 
   if (!isInsideUkraine(e.latlng)) {
@@ -143,19 +161,34 @@ map.on('click', function(e) {
     return;
   }
 
+  // marker
   if (marker) {
     marker.setLatLng(e.latlng);
   } else {
     marker = L.marker(e.latlng).addTo(map);
   }
 
-  var lat = e.latlng.lat.toFixed(5);
-  var lng = e.latlng.lng.toFixed(5);
+  // circle (5 km)
+  if (circle) {
+    map.removeLayer(circle);
+  }
+
+  circle = L.circle(e.latlng, {
+    radius: 5000,
+    color: '#3388ff',
+    fillOpacity: 0.1
+  }).addTo(map);
+
+  // 🔥 jitter
+  var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
+
+  var lat = jittered.lat.toFixed(5);
+  var lng = jittered.lng.toFixed(5);
 
   document.getElementById("info").innerHTML =
-    "Selected: " + lat + ", " + lng + "<br>Redirecting...";
+    "Selected area (~5 km radius). Redirecting...";
 
-  // 🔥 FIXED redirect (this is the important part)
+  // redirect
   var url = new URL(surveyURL);
   url.searchParams.set("lat", lat);
   url.searchParams.set("lng", lng);
