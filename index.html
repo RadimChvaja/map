@@ -8,18 +8,23 @@
 
   <style>
     body { margin: 0; font-family: Arial, sans-serif; }
-    #map { height: 100vh; width: 100%; }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
 
     #info {
       position: absolute;
-      top: 10px;
-      left: 10px;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
       background: white;
-      padding: 10px 14px;
+      padding: 10px 16px;
       z-index: 1000;
       border-radius: 8px;
       font-size: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }
   </style>
 </head>
@@ -27,7 +32,7 @@
 <body>
 
 <div id="info">
-  Click on the map to select your location
+  Zoom in and click approximately where you lived (±5 km is enough)
 </div>
 
 <div id="map"></div>
@@ -36,22 +41,35 @@
 
 <script>
 
-  // 🔥 SEM DEJ SVŮJ QUALTRICS LINK
   var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
-  var map = L.map('map').setView([49, 32], 6);
+  // 🇺🇦 hranice Ukrajiny (přibližné)
+  var bounds = [
+    [44.0, 22.0], // SW
+    [53.5, 40.5]  // NE
+  ];
+
+  var map = L.map('map', {
+    maxBounds: bounds,
+    maxBoundsViscosity: 1.0,
+    minZoom: 6,
+    maxZoom: 18
+  }).setView([49, 31], 6);
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 18
   }).addTo(map);
 
   var marker;
 
   map.on('click', function(e) {
 
-    if (marker) map.removeLayer(marker);
-
-    marker = L.marker(e.latlng).addTo(map);
+    if (marker) {
+      marker.setLatLng(e.latlng);
+    } else {
+      marker = L.marker(e.latlng).addTo(map);
+    }
 
     var lat = e.latlng.lat.toFixed(5);
     var lng = e.latlng.lng.toFixed(5);
@@ -63,7 +81,7 @@
 
     setTimeout(function() {
       window.location.href = surveyURL + separator + "lat=" + lat + "&lng=" + lng;
-    }, 1000);
+    }, 800);
 
   });
 
