@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Select your location</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #map { height: 100vh; width: 100%; }
+
+    #info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px 14px;
+      z-index: 1000;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="info">
+  Click on the map to select your location
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+
+  // 🔥 SEM DEJ SVŮJ QUALTRICS LINK
+  var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
+
+  var map = L.map('map').setView([49, 32], 6);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var marker;
+
+  map.on('click', function(e) {
+
+    if (marker) map.removeLayer(marker);
+
+    marker = L.marker(e.latlng).addTo(map);
+
+    var lat = e.latlng.lat.toFixed(5);
+    var lng = e.latlng.lng.toFixed(5);
+
+    document.getElementById("info").innerHTML =
+      "Selected: " + lat + ", " + lng + "<br>Redirecting...";
+
+    var separator = surveyURL.includes("?") ? "&" : "?";
+
+    setTimeout(function() {
+      window.location.href = surveyURL + separator + "lat=" + lat + "&lng=" + lng;
+    }, 1000);
+
+  });
+
+</script>
+
+</body>
+</html>
