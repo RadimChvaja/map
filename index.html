@@ -7,10 +7,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; }
 
     #map {
       height: 100vh;
@@ -29,10 +26,30 @@
       font-size: 14px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }
+
+    #locateBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2000;
+      background: white;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+    #locateBtn:hover {
+      background: #f0f0f0;
+    }
   </style>
 </head>
 
 <body>
+
+<button id="locateBtn">📍 Use my location</button>
 
 <div id="info">
   Zoom in and click approximately where you lived (±5 km is enough)
@@ -44,120 +61,156 @@
 
 <script>
 
-  var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGvi0G";
+var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGvi0G";
 
-  // 🇺🇦 bounds
-  var bounds = L.latLngBounds(
-    L.latLng(44.0, 22.0),
-    L.latLng(53.5, 40.5)
-  );
+// 🇺🇦 bounds
+var bounds = L.latLngBounds(
+  L.latLng(44.0, 22.0),
+  L.latLng(53.5, 40.5)
+);
 
-  var map = L.map('map', {
-    maxBounds: bounds,
-    maxBoundsViscosity: 1.0,
-    minZoom: 6,
-    maxZoom: 18,
-    worldCopyJump: false
+var map = L.map('map', {
+  maxBounds: bounds,
+  maxBoundsViscosity: 1.0,
+  minZoom: 6,
+  maxZoom: 18,
+  worldCopyJump: false,
+
+  zoomAnimation: false,
+  fadeAnimation: false,
+  markerZoomAnimation: false,
+  inertia: true
+});
+
+map.fitBounds(bounds);
+
+map.on('drag', function() {
+  map.panInsideBounds(bounds, { animate: false });
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors',
+  noWrap: true,
+  updateWhenIdle: true,
+  keepBuffer: 3
+}).addTo(map);
+
+var marker;
+var ukraineLayer;
+
+// 🇺🇦 hranice
+fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
+  .then(res => res.json())
+  .then(data => {
+
+    ukraineLayer = L.geoJSON(data, {
+      style: {
+        color: "#d00",
+        weight: 2,
+        fillColor: "#d00",
+        fillOpacity: 0.05
+      }
+    }).addTo(map);
+
   });
 
-  map.fitBounds(bounds);
+// 🔥 point in polygon
+function isInsideUkraine(latlng) {
+  if (!ukraineLayer) return false;
 
-  map.on('drag', function() {
-    map.panInsideBounds(bounds, { animate: false });
+  var inside = false;
+
+  ukraineLayer.eachLayer(function(layer) {
+    var poly = layer.getLatLngs();
+
+    function pointInPoly(point, vs) {
+      var x = point.lng, y = point.lat;
+      var inside = false;
+
+      for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].lng, yi = vs[i].lat;
+        var xj = vs[j].lng, yj = vs[j].lat;
+
+        var intersect =
+          ((yi > y) != (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+        if (intersect) inside = !inside;
+      }
+
+      return inside;
+    }
+
+    if (Array.isArray(poly[0])) {
+      poly.forEach(function(p) {
+        if (pointInPoly(latlng, p)) inside = true;
+      });
+    } else {
+      if (pointInPoly(latlng, poly)) inside = true;
+    }
   });
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors',
-    noWrap: true
-  }).addTo(map);
+  return inside;
+}
 
-  var marker;
-  var ukraineLayer;
+// 📍 kliknutí na mapu
+map.on('click', function(e) {
 
-  // 🔥 Načti hranici Ukrajiny
-  fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
-    .then(res => res.json())
-    .then(data => {
-
-      ukraineLayer = L.geoJSON(data, {
-        style: {
-          color: "#d00",
-          weight: 2,
-          fillColor: "#d00",
-          fillOpacity: 0.05
-        }
-      }).addTo(map);
-
-    });
-
-  // 🔥 Funkce: je bod uvnitř polygonu?
-  function isInsideUkraine(latlng) {
-    if (!ukraineLayer) return false;
-
-    var inside = false;
-
-    ukraineLayer.eachLayer(function(layer) {
-      var poly = layer.getLatLngs();
-
-      function pointInPoly(point, vs) {
-        var x = point.lng, y = point.lat;
-        var inside = false;
-
-        for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-          var xi = vs[i].lng, yi = vs[i].lat;
-          var xj = vs[j].lng, yj = vs[j].lat;
-
-          var intersect =
-            ((yi > y) != (yj > y)) &&
-            (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-
-          if (intersect) inside = !inside;
-        }
-
-        return inside;
-      }
-
-      if (Array.isArray(poly[0])) {
-        poly.forEach(function(p) {
-          if (pointInPoly(latlng, p)) inside = true;
-        });
-      } else {
-        if (pointInPoly(latlng, poly)) inside = true;
-      }
-    });
-
-    return inside;
+  if (!isInsideUkraine(e.latlng)) {
+    document.getElementById("info").innerHTML =
+      "Please click inside Ukraine";
+    return;
   }
 
-  map.on('click', function(e) {
+  placeAndSend(e.latlng);
+});
 
-    // ❌ mimo Ukrajinu → ignoruj
-    if (!isInsideUkraine(e.latlng)) {
+// 📍 Use my location
+document.getElementById("locateBtn").onclick = function() {
+
+  navigator.geolocation.getCurrentPosition(function(pos) {
+
+    var latlng = {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    };
+
+    if (!isInsideUkraine(latlng)) {
       document.getElementById("info").innerHTML =
-        "Please click inside Ukraine";
+        "Your location is outside Ukraine";
       return;
     }
 
-    // ✔ uvnitř → pokračuj
-    if (marker) {
-      marker.setLatLng(e.latlng);
-    } else {
-      marker = L.marker(e.latlng).addTo(map);
-    }
+    map.setView(latlng, 10);
+    placeAndSend(latlng);
 
-    var lat = e.latlng.lat.toFixed(5);
-    var lng = e.latlng.lng.toFixed(5);
-
+  }, function() {
     document.getElementById("info").innerHTML =
-      "Selected: " + lat + ", " + lng + "<br>Redirecting...";
-
-    var separator = surveyURL.includes("?") ? "&" : "?";
-
-    setTimeout(function() {
-      window.location.href = surveyURL + separator + "lat=" + lat + "&lng=" + lng;
-    }, 800);
-
+      "Location access denied";
   });
+};
+
+// 🔥 společná funkce
+function placeAndSend(latlng) {
+
+  if (marker) {
+    marker.setLatLng(latlng);
+  } else {
+    marker = L.marker(latlng).addTo(map);
+  }
+
+  var lat = latlng.lat.toFixed(5);
+  var lng = latlng.lng.toFixed(5);
+
+  document.getElementById("info").innerHTML =
+    "Selected: " + lat + ", " + lng + "<br>Redirecting...";
+
+  var separator = surveyURL.includes("?") ? "&" : "?";
+
+  setTimeout(function() {
+    window.location.href = surveyURL + separator + "lat=" + lat + "&lng=" + lng;
+  }, 800);
+}
 
 </script>
 
