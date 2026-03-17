@@ -26,33 +26,13 @@
       font-size: 14px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
     }
-
-    #locateBtn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 2000;
-      background: white;
-      border: none;
-      padding: 10px 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    }
-
-    #locateBtn:hover {
-      background: #f0f0f0;
-    }
   </style>
 </head>
 
 <body>
 
-<button id="locateBtn">📍 Use my location</button>
-
 <div id="info">
-  Zoom in and click approximately where you lived (±5 km is enough)
+  Zoom in and click approximately where you lived (±5 km is enough). Your exact address is not needed.
 </div>
 
 <div id="map"></div>
@@ -69,6 +49,7 @@ var bounds = L.latLngBounds(
   L.latLng(53.5, 40.5)
 );
 
+// 🔥 OPTIMIZED MAP
 var map = L.map('map', {
   maxBounds: bounds,
   maxBoundsViscosity: 1.0,
@@ -79,7 +60,9 @@ var map = L.map('map', {
   zoomAnimation: false,
   fadeAnimation: false,
   markerZoomAnimation: false,
-  inertia: true
+
+  inertia: false,
+  preferCanvas: true
 });
 
 map.fitBounds(bounds);
@@ -88,11 +71,16 @@ map.on('drag', function() {
   map.panInsideBounds(bounds, { animate: false });
 });
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap contributors',
+// 🔥 FAST TILE LAYER (Carto)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OpenStreetMap & Carto',
+  subdomains: 'abcd',
+  maxZoom: 19,
+
   noWrap: true,
   updateWhenIdle: true,
-  keepBuffer: 3
+  updateWhenZooming: false,
+  keepBuffer: 4
 }).addTo(map);
 
 var marker;
@@ -153,7 +141,7 @@ function isInsideUkraine(latlng) {
   return inside;
 }
 
-// 📍 kliknutí na mapu
+// 📍 klik
 map.on('click', function(e) {
 
   if (!isInsideUkraine(e.latlng)) {
@@ -162,45 +150,14 @@ map.on('click', function(e) {
     return;
   }
 
-  placeAndSend(e.latlng);
-});
-
-// 📍 Use my location
-document.getElementById("locateBtn").onclick = function() {
-
-  navigator.geolocation.getCurrentPosition(function(pos) {
-
-    var latlng = {
-      lat: pos.coords.latitude,
-      lng: pos.coords.longitude
-    };
-
-    if (!isInsideUkraine(latlng)) {
-      document.getElementById("info").innerHTML =
-        "Your location is outside Ukraine";
-      return;
-    }
-
-    map.setView(latlng, 10);
-    placeAndSend(latlng);
-
-  }, function() {
-    document.getElementById("info").innerHTML =
-      "Location access denied";
-  });
-};
-
-// 🔥 společná funkce
-function placeAndSend(latlng) {
-
   if (marker) {
-    marker.setLatLng(latlng);
+    marker.setLatLng(e.latlng);
   } else {
-    marker = L.marker(latlng).addTo(map);
+    marker = L.marker(e.latlng).addTo(map);
   }
 
-  var lat = latlng.lat.toFixed(5);
-  var lng = latlng.lng.toFixed(5);
+  var lat = e.latlng.lat.toFixed(5);
+  var lng = e.latlng.lng.toFixed(5);
 
   document.getElementById("info").innerHTML =
     "Selected: " + lat + ", " + lng + "<br>Redirecting...";
@@ -210,9 +167,11 @@ function placeAndSend(latlng) {
   setTimeout(function() {
     window.location.href = surveyURL + separator + "lat=" + lat + "&lng=" + lng;
   }, 800);
-}
+
+});
 
 </script>
 
 </body>
 </html>
+  
