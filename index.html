@@ -7,7 +7,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
 
     #map {
       height: 100vh;
@@ -16,12 +19,12 @@
 
     #info {
       position: absolute;
-      bottom: 20px;
+      top: 70px;
       left: 50%;
       transform: translateX(-50%);
       background: white;
       padding: 10px 16px;
-      z-index: 1000;
+      z-index: 2000;
       border-radius: 8px;
       font-size: 14px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.25);
@@ -41,30 +44,101 @@
 
 <script>
 
-  var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
+  var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGvi0G";
 
-  // 🇺🇦 hranice Ukrajiny (přibližné)
-  var bounds = [
-    [44.0, 22.0], // SW
-    [53.5, 40.5]  // NE
-  ];
+  // 🇺🇦 bounds
+  var bounds = L.latLngBounds(
+    L.latLng(44.0, 22.0),
+    L.latLng(53.5, 40.5)
+  );
 
   var map = L.map('map', {
     maxBounds: bounds,
     maxBoundsViscosity: 1.0,
     minZoom: 6,
-    maxZoom: 18
-  }).setView([49, 31], 6);
+    maxZoom: 18,
+    worldCopyJump: false
+  });
+
+  map.fitBounds(bounds);
+
+  map.on('drag', function() {
+    map.panInsideBounds(bounds, { animate: false });
+  });
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
-    maxZoom: 18
+    noWrap: true
   }).addTo(map);
 
   var marker;
+  var ukraineLayer;
+
+  // 🔥 Načti hranici Ukrajiny
+  fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
+    .then(res => res.json())
+    .then(data => {
+
+      ukraineLayer = L.geoJSON(data, {
+        style: {
+          color: "#d00",
+          weight: 2,
+          fillColor: "#d00",
+          fillOpacity: 0.05
+        }
+      }).addTo(map);
+
+    });
+
+  // 🔥 Funkce: je bod uvnitř polygonu?
+  function isInsideUkraine(latlng) {
+    if (!ukraineLayer) return false;
+
+    var inside = false;
+
+    ukraineLayer.eachLayer(function(layer) {
+      var poly = layer.getLatLngs();
+
+      function pointInPoly(point, vs) {
+        var x = point.lng, y = point.lat;
+        var inside = false;
+
+        for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+          var xi = vs[i].lng, yi = vs[i].lat;
+          var xj = vs[j].lng, yj = vs[j].lat;
+
+          var intersect =
+            ((yi > y) != (yj > y)) &&
+            (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+          if (intersect) inside = !inside;
+        }
+
+        return inside;
+      }
+
+      if (Array.isArray(poly[0])) {
+        poly.forEach(function(p) {
+          if (pointInPoly(latlng, p)) inside = true;
+        });
+      } else {
+        if (pointInPoly(latlng, poly)) inside = true;
+      }
+    });
+
+    return inside;
+  }
 
   map.on('click', function(e) {
 
+    // ❌ mimo Ukrajinu → ignoruj
+    if (!isInsideUkraine(e.latlng)) {
+      document.getElementById("info").innerHTML =
+        "Please click inside Ukraine";
+      return;
+    }
+
+    // ✔ uvnitř → pokračuj
     if (marker) {
       marker.setLatLng(e.latlng);
     } else {
