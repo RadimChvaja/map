@@ -47,8 +47,11 @@ function getParam(name) {
   return urlParams.get(name);
 }
 
-var surveyURL = getParam("returnUrl");
+var responseId = getParam("responseId");
+var baseURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
+var surveyURL = baseURL + "?Q_R=" + responseId;
+  
 if (surveyURL) {
   surveyURL = decodeURIComponent(surveyURL);
 } else {
