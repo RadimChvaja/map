@@ -41,7 +41,7 @@
 
 <script>
 
-// ✅ GET RETURN URL + FIX ENCODING
+// 🔹 GET RESPONSE ID
 function getParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
@@ -50,13 +50,9 @@ function getParam(name) {
 var responseId = getParam("responseId");
 var baseURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
-var surveyURL = baseURL + "?Q_R=" + responseId;
-  
-if (surveyURL) {
-  surveyURL = decodeURIComponent(surveyURL);
-} else {
+if (!responseId) {
   document.getElementById("info").innerHTML =
-    "Error: missing return link. Please go back and try again.";
+    "Error: missing response ID. Please return to the survey.";
 }
 
 // bounds UA
@@ -86,7 +82,7 @@ var circle;
 var hoverCircle;
 var ukraineLayer;
 
-// ✅ STABLE GEOJSON (hranice fungují)
+// ✅ hranice UA
 fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
   .then(res => res.json())
   .then(data => {
@@ -146,7 +142,7 @@ map.on('mousemove', function(e) {
 // click
 map.on('click', function(e) {
 
-  if (!surveyURL) return;
+  if (!responseId) return;
 
   if (!isInsideUkraine(e.latlng)) {
     document.getElementById("info").innerHTML =
@@ -173,19 +169,12 @@ map.on('click', function(e) {
   document.getElementById("info").innerHTML =
     "Selected area (~5 km radius). Returning to survey...";
 
-  try {
-    var url = new URL(surveyURL);
-    url.searchParams.set("lat", lat);
-    url.searchParams.set("lng", lng);
+  // 🔥 FINÁLNÍ REDIRECT (funguje + ukládá data)
+  var returnURL = baseURL + "?Q_R=" + responseId + "&lat=" + lat + "&lng=" + lng;
 
-    setTimeout(function() {
-      window.location.replace(url.toString());
-    }, 600);
-
-  } catch (e) {
-    document.getElementById("info").innerHTML =
-      "Error returning to survey.";
-  }
+  setTimeout(function() {
+    window.location.replace(returnURL);
+  }, 600);
 
 });
 
