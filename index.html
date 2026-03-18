@@ -41,13 +41,20 @@
 
 <script>
 
+// 🔹 get return URL safely
 function getParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
 }
 
 var surveyURL = getParam("returnUrl");
-  
+
+// ❗ fallback only if something breaks
+if (!surveyURL) {
+  document.getElementById("info").innerHTML =
+    "Error: missing return link. Please go back to the survey and try again.";
+}
+
 // bounds UA
 var bounds = L.latLngBounds(
   L.latLng(44.0, 22.0),
@@ -59,28 +66,15 @@ var map = L.map('map', {
   maxBoundsViscosity: 1.0,
   minZoom: 6,
   maxZoom: 18,
-  worldCopyJump: false,
-  zoomAnimation: false,
-  fadeAnimation: false,
-  markerZoomAnimation: false,
-  inertia: false,
-  preferCanvas: true
+  inertia: false
 });
 
 map.fitBounds(bounds);
 
-map.on('drag', function() {
-  map.panInsideBounds(bounds, { animate: false });
-});
-
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
   attribution: '&copy; OpenStreetMap & Carto',
   subdomains: 'abcd',
-  maxZoom: 19,
-  noWrap: true,
-  updateWhenIdle: true,
-  updateWhenZooming: false,
-  keepBuffer: 4
+  maxZoom: 19
 }).addTo(map);
 
 var marker;
@@ -88,23 +82,20 @@ var circle;
 var hoverCircle;
 var ukraineLayer;
 
-// 🇺🇦 hranice
-fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
+// ✅ faster geojson source
+fetch('https://geojson.xyz/countries/UKR.geo.json')
   .then(res => res.json())
   .then(data => {
-
     ukraineLayer = L.geoJSON(data, {
       style: {
         color: "#d00",
         weight: 2,
-        fillColor: "#d00",
         fillOpacity: 0.05
       }
     }).addTo(map);
-
   });
 
-// 🔥 random point (jitter)
+// 🔥 jitter
 function randomPointInRadius(lat, lng, radiusKm) {
   const radiusInDegrees = radiusKm / 111;
 
@@ -113,54 +104,29 @@ function randomPointInRadius(lat, lng, radiusKm) {
   const w = radiusInDegrees * Math.sqrt(u);
   const t = 2 * Math.PI * v;
 
-  const newLat = lat + w * Math.cos(t);
-  const newLng = lng + w * Math.sin(t) / Math.cos(lat * Math.PI / 180);
-
-  return { lat: newLat, lng: newLng };
+  return {
+    lat: lat + w * Math.cos(t),
+    lng: lng + w * Math.sin(t) / Math.cos(lat * Math.PI / 180)
+  };
 }
 
-// 🔥 inside UA
+// 🔥 simple inside check
 function isInsideUkraine(latlng) {
-  if (!ukraineLayer) return false;
+  if (!ukraineLayer) return true; // allow click if not loaded yet
 
   var inside = false;
 
   ukraineLayer.eachLayer(function(layer) {
-    var poly = layer.getLatLngs();
-
-    function pointInPoly(point, vs) {
-      var x = point.lng, y = point.lat;
-      var inside = false;
-
-      for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-        var xi = vs[i].lng, yi = vs[i].lat;
-        var xj = vs[j].lng, yj = vs[j].lat;
-
-        var intersect =
-          ((yi > y) != (yj > y)) &&
-          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-
-        if (intersect) inside = !inside;
-      }
-
-      return inside;
-    }
-
-    if (Array.isArray(poly[0])) {
-      poly.forEach(function(p) {
-        if (pointInPoly(latlng, p)) inside = true;
-      });
-    } else {
-      if (pointInPoly(latlng, poly)) inside = true;
+    if (layer.getBounds().contains(latlng)) {
+      inside = true;
     }
   });
 
   return inside;
 }
 
-// 🔥 LIVE PREVIEW CIRCLE
+// 🔵 hover circle
 map.on('mousemove', function(e) {
-
   if (hoverCircle) {
     hoverCircle.setLatLng(e.latlng);
   } else {
@@ -171,11 +137,12 @@ map.on('mousemove', function(e) {
       interactive: false
     }).addTo(map);
   }
-
 });
 
-// 🔥 CLICK
+// 🔴 click
 map.on('click', function(e) {
+
+  if (!surveyURL) return;
 
   if (!isInsideUkraine(e.latlng)) {
     document.getElementById("info").innerHTML =
@@ -183,17 +150,10 @@ map.on('click', function(e) {
     return;
   }
 
-  // marker
-  if (marker) {
-    marker.setLatLng(e.latlng);
-  } else {
-    marker = L.marker(e.latlng).addTo(map);
-  }
+  if (marker) marker.setLatLng(e.latlng);
+  else marker = L.marker(e.latlng).addTo(map);
 
-  // circle
-  if (circle) {
-    map.removeLayer(circle);
-  }
+  if (circle) map.removeLayer(circle);
 
   circle = L.circle(e.latlng, {
     radius: 5000,
@@ -201,22 +161,27 @@ map.on('click', function(e) {
     fillOpacity: 0.15
   }).addTo(map);
 
-  // jitter
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
   var lng = jittered.lng.toFixed(5);
 
   document.getElementById("info").innerHTML =
-    "Selected area (~5 km radius). Redirecting...";
+    "Selected area (~5 km radius). Returning to survey...";
 
-  var url = new URL(surveyURL);
-  url.searchParams.set("lat", lat);
-  url.searchParams.set("lng", lng);
+  try {
+    var url = new URL(surveyURL);
+    url.searchParams.set("lat", lat);
+    url.searchParams.set("lng", lng);
 
-  setTimeout(function() {
-    window.location.replace(url.toString());
-  }, 800);
+    setTimeout(function() {
+      window.location.href = url.toString();
+    }, 600);
+
+  } catch (e) {
+    document.getElementById("info").innerHTML =
+      "Error returning to survey. Please go back manually.";
+  }
 
 });
 
