@@ -1,56 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Select your location</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+
+    #info {
+      position: absolute;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 10px 16px;
+      z-index: 2000;
+      border-radius: 8px;
+      font-size: 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="info">
+  Click approximately where you lived (±5 km is enough).
+</div>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
 <script>
 
-function getParam(name) {
-  const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get(name);
-}
+var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
-var returnURL = getParam("returnUrl");
-
-// bounds UA
-var bounds = L.latLngBounds(
-  L.latLng(44.0, 22.0),
-  L.latLng(53.5, 40.5)
-);
-
-var map = L.map('map', {
-  maxBounds: bounds,
-  maxBoundsViscosity: 1.0,
-  minZoom: 6,
-  maxZoom: 18,
-  inertia: false
-});
-
-map.fitBounds(bounds);
+// map
+var map = L.map('map').setView([49, 32], 6);
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap & Carto',
-  subdomains: 'abcd',
-  maxZoom: 19
+  attribution: '&copy; OpenStreetMap & Carto'
 }).addTo(map);
-
-var marker;
-var circle;
-var hoverCircle;
-var ukraineLayer;
-
-// hranice UA
-fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
-  .then(res => res.json())
-  .then(data => {
-    ukraineLayer = L.geoJSON(data, {
-      style: {
-        color: "#d00",
-        weight: 2,
-        fillOpacity: 0.05
-      }
-    }).addTo(map);
-  });
 
 // jitter
 function randomPointInRadius(lat, lng, radiusKm) {
   const radiusInDegrees = radiusKm / 111;
-
   const u = Math.random();
   const v = Math.random();
   const w = radiusInDegrees * Math.sqrt(u);
@@ -62,40 +64,21 @@ function randomPointInRadius(lat, lng, radiusKm) {
   };
 }
 
-// hover
-map.on('mousemove', function(e) {
-  if (hoverCircle) {
-    hoverCircle.setLatLng(e.latlng);
-  } else {
-    hoverCircle = L.circle(e.latlng, {
-      radius: 5000,
-      color: '#3388ff',
-      fillOpacity: 0.05,
-      interactive: false
-    }).addTo(map);
-  }
-});
-
-// CLICK
+// click
 map.on('click', function(e) {
-
-  if (!returnURL) {
-    alert("Missing return URL");
-    return;
-  }
 
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
   var lng = jittered.lng.toFixed(5);
 
-  // decode + přidej parametry
-  var url = decodeURIComponent(returnURL);
+  var url = surveyURL + "?lat=" + lat + "&lng=" + lng;
 
-  url += (url.includes('?') ? '&' : '?') + "lat=" + lat + "&lng=" + lng;
-
-  window.location.replace(url);
+  window.location.href = url;
 
 });
 
 </script>
+
+</body>
+</html>
