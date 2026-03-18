@@ -1,59 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Select your location</title>
-
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
-
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-
-    #info {
-      position: absolute;
-      top: 70px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: white;
-      padding: 10px 16px;
-      z-index: 2000;
-      border-radius: 8px;
-      font-size: 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    }
-  </style>
-</head>
-
-<body>
-
-<div id="info">
-  Move your cursor and click approximately where you lived (±5 km is enough).
-</div>
-
-<div id="map"></div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
 
-// 🔹 GET RESPONSE ID
 function getParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
 }
 
-var responseId = getParam("responseId");
-var baseURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
-
-if (!responseId) {
-  document.getElementById("info").innerHTML =
-    "Error: missing response ID. Please return to the survey.";
-}
+var returnURL = getParam("returnUrl");
 
 // bounds UA
 var bounds = L.latLngBounds(
@@ -82,7 +34,7 @@ var circle;
 var hoverCircle;
 var ukraineLayer;
 
-// ✅ hranice UA
+// hranice UA
 fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
   .then(res => res.json())
   .then(data => {
@@ -110,22 +62,7 @@ function randomPointInRadius(lat, lng, radiusKm) {
   };
 }
 
-// inside UA
-function isInsideUkraine(latlng) {
-  if (!ukraineLayer) return true;
-
-  var inside = false;
-
-  ukraineLayer.eachLayer(function(layer) {
-    if (layer.getBounds().contains(latlng)) {
-      inside = true;
-    }
-  });
-
-  return inside;
-}
-
-// hover circle
+// hover
 map.on('mousemove', function(e) {
   if (hoverCircle) {
     hoverCircle.setLatLng(e.latlng);
@@ -139,46 +76,26 @@ map.on('mousemove', function(e) {
   }
 });
 
-// click
+// CLICK
 map.on('click', function(e) {
 
-  if (!responseId) return;
-
-  if (!isInsideUkraine(e.latlng)) {
-    document.getElementById("info").innerHTML =
-      "Please click inside Ukraine";
+  if (!returnURL) {
+    alert("Missing return URL");
     return;
   }
-
-  if (marker) marker.setLatLng(e.latlng);
-  else marker = L.marker(e.latlng).addTo(map);
-
-  if (circle) map.removeLayer(circle);
-
-  circle = L.circle(e.latlng, {
-    radius: 5000,
-    color: '#3388ff',
-    fillOpacity: 0.15
-  }).addTo(map);
 
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
   var lng = jittered.lng.toFixed(5);
 
-  document.getElementById("info").innerHTML =
-    "Selected area (~5 km radius). Returning to survey...";
+  // decode + přidej parametry
+  var url = decodeURIComponent(returnURL);
 
-  // 🔥 FINÁLNÍ REDIRECT (funguje + ukládá data)
-  var returnURL = baseURL + "?Q_R=" + responseId + "&lat=" + lat + "&lng=" + lng;
+  url += (url.includes('?') ? '&' : '?') + "lat=" + lat + "&lng=" + lng;
 
-  setTimeout(function() {
-    window.location.replace(returnURL);
-  }, 600);
+  window.location.replace(url);
 
 });
 
 </script>
-
-</body>
-</html>
