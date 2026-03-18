@@ -32,7 +32,7 @@
 <body>
 
 <div id="info">
-  Click approximately where you lived (±5 km is enough).
+  Move your cursor and click approximately where you lived (±5 km is enough).
 </div>
 
 <div id="map"></div>
@@ -43,38 +43,175 @@
 
 var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
-// map
-var map = L.map('map').setView([49, 32], 6);
+// bounds UA
+var bounds = L.latLngBounds(
+  L.latLng(44.0, 22.0),
+  L.latLng(53.5, 40.5)
+);
+
+var map = L.map('map', {
+  maxBounds: bounds,
+  maxBoundsViscosity: 1.0,
+  minZoom: 6,
+  maxZoom: 18,
+  worldCopyJump: false,
+  zoomAnimation: false,
+  fadeAnimation: false,
+  markerZoomAnimation: false,
+  inertia: false,
+  preferCanvas: true
+});
+
+map.fitBounds(bounds);
+
+map.on('drag', function() {
+  map.panInsideBounds(bounds, { animate: false });
+});
 
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap & Carto'
+  attribution: '&copy; OpenStreetMap & Carto',
+  subdomains: 'abcd',
+  maxZoom: 19,
+  noWrap: true,
+  updateWhenIdle: true,
+  updateWhenZooming: false,
+  keepBuffer: 4
 }).addTo(map);
 
-// jitter
+var marker;
+var circle;
+var hoverCircle;
+var ukraineLayer;
+
+// 🇺🇦 hranice
+fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
+  .then(res => res.json())
+  .then(data => {
+
+    ukraineLayer = L.geoJSON(data, {
+      style: {
+        color: "#d00",
+        weight: 2,
+        fillColor: "#d00",
+        fillOpacity: 0.05
+      }
+    }).addTo(map);
+
+  });
+
+// 🔥 random point (jitter)
 function randomPointInRadius(lat, lng, radiusKm) {
   const radiusInDegrees = radiusKm / 111;
+
   const u = Math.random();
   const v = Math.random();
   const w = radiusInDegrees * Math.sqrt(u);
   const t = 2 * Math.PI * v;
 
-  return {
-    lat: lat + w * Math.cos(t),
-    lng: lng + w * Math.sin(t) / Math.cos(lat * Math.PI / 180)
-  };
+  const newLat = lat + w * Math.cos(t);
+  const newLng = lng + w * Math.sin(t) / Math.cos(lat * Math.PI / 180);
+
+  return { lat: newLat, lng: newLng };
 }
 
-// click
+// 🔥 inside UA
+function isInsideUkraine(latlng) {
+  if (!ukraineLayer) return false;
+
+  var inside = false;
+
+  ukraineLayer.eachLayer(function(layer) {
+    var poly = layer.getLatLngs();
+
+    function pointInPoly(point, vs) {
+      var x = point.lng, y = point.lat;
+      var inside = false;
+
+      for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        var xi = vs[i].lng, yi = vs[i].lat;
+        var xj = vs[j].lng, yj = vs[j].lat;
+
+        var intersect =
+          ((yi > y) != (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+        if (intersect) inside = !inside;
+      }
+
+      return inside;
+    }
+
+    if (Array.isArray(poly[0])) {
+      poly.forEach(function(p) {
+        if (pointInPoly(latlng, p)) inside = true;
+      });
+    } else {
+      if (pointInPoly(latlng, poly)) inside = true;
+    }
+  });
+
+  return inside;
+}
+
+// 🔥 LIVE PREVIEW CIRCLE
+map.on('mousemove', function(e) {
+
+  if (hoverCircle) {
+    hoverCircle.setLatLng(e.latlng);
+  } else {
+    hoverCircle = L.circle(e.latlng, {
+      radius: 5000,
+      color: '#3388ff',
+      fillOpacity: 0.05,
+      interactive: false
+    }).addTo(map);
+  }
+
+});
+
+// 🔥 CLICK
 map.on('click', function(e) {
 
+  if (!isInsideUkraine(e.latlng)) {
+    document.getElementById("info").innerHTML =
+      "Please click inside Ukraine";
+    return;
+  }
+
+  // marker
+  if (marker) {
+    marker.setLatLng(e.latlng);
+  } else {
+    marker = L.marker(e.latlng).addTo(map);
+  }
+
+  // circle
+  if (circle) {
+    map.removeLayer(circle);
+  }
+
+  circle = L.circle(e.latlng, {
+    radius: 5000,
+    color: '#3388ff',
+    fillOpacity: 0.15
+  }).addTo(map);
+
+  // jitter
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
   var lng = jittered.lng.toFixed(5);
 
-  var url = surveyURL + "?lat=" + lat + "&lng=" + lng;
+  document.getElementById("info").innerHTML =
+    "Selected area (~5 km radius). Redirecting...";
 
-  window.location.href = url;
+  var url = new URL(surveyURL);
+  url.searchParams.set("lat", lat);
+  url.searchParams.set("lng", lng);
+
+  setTimeout(function() {
+    window.location.replace(url.toString());
+  }, 800);
 
 });
 
