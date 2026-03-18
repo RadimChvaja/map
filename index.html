@@ -41,8 +41,17 @@
 
 <script>
 
-var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
+function getParam(name) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
 
+var surveyURL = getParam("returnUrl");
+
+if (!surveyURL) {
+  surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
+}
+  
 // bounds UA
 var bounds = L.latLngBounds(
   L.latLng(44.0, 22.0),
