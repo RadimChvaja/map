@@ -210,7 +210,7 @@ map.on('click', function(e) {
   url.searchParams.set("lng", lng);
 
   setTimeout(function() {
-    window.location.replace(url.toString());
+    window.location.href = url.toString();
   }, 800);
 
 });
