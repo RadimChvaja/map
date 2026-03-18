@@ -41,7 +41,7 @@
 
 <script>
 
-// 🔹 get return URL safely
+// ✅ GET RETURN URL + FIX ENCODING
 function getParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
@@ -49,10 +49,11 @@ function getParam(name) {
 
 var surveyURL = getParam("returnUrl");
 
-// ❗ fallback only if something breaks
-if (!surveyURL) {
+if (surveyURL) {
+  surveyURL = decodeURIComponent(surveyURL);
+} else {
   document.getElementById("info").innerHTML =
-    "Error: missing return link. Please go back to the survey and try again.";
+    "Error: missing return link. Please go back and try again.";
 }
 
 // bounds UA
@@ -82,8 +83,8 @@ var circle;
 var hoverCircle;
 var ukraineLayer;
 
-// ✅ faster geojson source
-fetch('https://geojson.xyz/countries/UKR.geo.json')
+// ✅ STABLE GEOJSON (hranice fungují)
+fetch('https://raw.githubusercontent.com/johan/world.geo.json/master/countries/UKR.geo.json')
   .then(res => res.json())
   .then(data => {
     ukraineLayer = L.geoJSON(data, {
@@ -95,7 +96,7 @@ fetch('https://geojson.xyz/countries/UKR.geo.json')
     }).addTo(map);
   });
 
-// 🔥 jitter
+// jitter
 function randomPointInRadius(lat, lng, radiusKm) {
   const radiusInDegrees = radiusKm / 111;
 
@@ -110,9 +111,9 @@ function randomPointInRadius(lat, lng, radiusKm) {
   };
 }
 
-// 🔥 simple inside check
+// inside UA
 function isInsideUkraine(latlng) {
-  if (!ukraineLayer) return true; // allow click if not loaded yet
+  if (!ukraineLayer) return true;
 
   var inside = false;
 
@@ -125,7 +126,7 @@ function isInsideUkraine(latlng) {
   return inside;
 }
 
-// 🔵 hover circle
+// hover circle
 map.on('mousemove', function(e) {
   if (hoverCircle) {
     hoverCircle.setLatLng(e.latlng);
@@ -139,7 +140,7 @@ map.on('mousemove', function(e) {
   }
 });
 
-// 🔴 click
+// click
 map.on('click', function(e) {
 
   if (!surveyURL) return;
@@ -175,12 +176,12 @@ map.on('click', function(e) {
     url.searchParams.set("lng", lng);
 
     setTimeout(function() {
-      window.location.href = url.toString();
+      window.location.replace(url.toString());
     }, 600);
 
   } catch (e) {
     document.getElementById("info").innerHTML =
-      "Error returning to survey. Please go back manually.";
+      "Error returning to survey.";
   }
 
 });
