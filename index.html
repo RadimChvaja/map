@@ -43,7 +43,7 @@
 
 var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
-  // 🔹 GET PARAM FUNCTION
+// 🔹 GET PARAM FUNCTION
 function getParam(name) {
   const urlParams = new URLSearchParams(window.location.search);
   return urlParams.get(name);
@@ -52,8 +52,9 @@ function getParam(name) {
 // 🔹 GET RESPONSE ID
 var responseId = getParam("responseId");
 
-var RID = getParam("response_id");
-var PID = getParam("assignment_id");
+// 🔥 OPRAVA — správné názvy
+var response_id = getParam("response_id");
+var assignment_id = getParam("assignment_id");
 
 // bounds UA
 var bounds = L.latLngBounds(
@@ -190,14 +191,12 @@ map.on('click', function(e) {
     return;
   }
 
-  // marker
   if (marker) {
     marker.setLatLng(e.latlng);
   } else {
     marker = L.marker(e.latlng).addTo(map);
   }
 
-  // circle
   if (circle) {
     map.removeLayer(circle);
   }
@@ -208,7 +207,6 @@ map.on('click', function(e) {
     fillOpacity: 0.15
   }).addTo(map);
 
-  // jitter
   var jittered = randomPointInRadius(e.latlng.lat, e.latlng.lng, 5);
 
   var lat = jittered.lat.toFixed(5);
@@ -217,24 +215,25 @@ map.on('click', function(e) {
   document.getElementById("info").innerHTML =
     "Selected area (~5 km radius). Redirecting...";
 
-  // 🔹 RETURN TO SAME RESPONSE
-if (!responseId) {
-  document.getElementById("info").innerHTML =
-    "Error: missing response ID. Please return to the survey.";
-  return;
-}
+  if (!responseId) {
+    document.getElementById("info").innerHTML =
+      "Error: missing response ID. Please return to the survey.";
+    return;
+  }
 
-var returnURL = surveyURL + "?Q_R=" + responseId;
+  var returnURL = surveyURL + "?Q_R=" + responseId;
 
-var url = new URL(returnURL);
-url.searchParams.set("lat", lat);
-url.searchParams.set("lng", lng);
-url.searchParams.set("response_id", response_id);
-url.searchParams.set("assignment_id", assignment_id);
+  var url = new URL(returnURL);
+  url.searchParams.set("lat", lat);
+  url.searchParams.set("lng", lng);
 
-setTimeout(function() {
-  window.location.href = url.toString();
-}, 800);
+  // 🔥 OPRAVA — správné parametry
+  if (response_id) url.searchParams.set("response_id", response_id);
+  if (assignment_id) url.searchParams.set("assignment_id", assignment_id);
+
+  setTimeout(function() {
+    window.location.href = url.toString();
+  }, 800);
 
 });
 
