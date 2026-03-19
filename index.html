@@ -52,6 +52,9 @@ function getParam(name) {
 // 🔹 GET RESPONSE ID
 var responseId = getParam("responseId");
 
+var RID = getParam("RID");
+var PID = getParam("PID");
+
 // bounds UA
 var bounds = L.latLngBounds(
   L.latLng(44.0, 22.0),
@@ -226,6 +229,8 @@ var returnURL = surveyURL + "?Q_R=" + responseId;
 var url = new URL(returnURL);
 url.searchParams.set("lat", lat);
 url.searchParams.set("lng", lng);
+url.searchParams.set("RID", RID);
+url.searchParams.set("PID", PID);
 
 setTimeout(function() {
   window.location.href = url.toString();
