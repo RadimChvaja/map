@@ -229,8 +229,8 @@ var returnURL = surveyURL + "?Q_R=" + responseId;
 var url = new URL(returnURL);
 url.searchParams.set("lat", lat);
 url.searchParams.set("lng", lng);
-url.searchParams.set("RID", response_id);
-url.searchParams.set("PID", assignment_id);
+url.searchParams.set("response_id", response_id);
+url.searchParams.set("assignment_id", assignment_id);
 
 setTimeout(function() {
   window.location.href = url.toString();
