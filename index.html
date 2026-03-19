@@ -43,6 +43,15 @@
 
 var surveyURL = "https://eruni.qualtrics.com/jfe/form/SV_3lMCzMLqahGviOG";
 
+  // 🔹 GET PARAM FUNCTION
+function getParam(name) {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
+
+// 🔹 GET RESPONSE ID
+var responseId = getParam("responseId");
+
 // bounds UA
 var bounds = L.latLngBounds(
   L.latLng(44.0, 22.0),
@@ -205,13 +214,22 @@ map.on('click', function(e) {
   document.getElementById("info").innerHTML =
     "Selected area (~5 km radius). Redirecting...";
 
-  var url = new URL(surveyURL);
-  url.searchParams.set("lat", lat);
-  url.searchParams.set("lng", lng);
+  // 🔹 RETURN TO SAME RESPONSE
+if (!responseId) {
+  document.getElementById("info").innerHTML =
+    "Error: missing response ID. Please return to the survey.";
+  return;
+}
 
-  setTimeout(function() {
-    window.location.href = url.toString();
-  }, 800);
+var returnURL = surveyURL + "?Q_R=" + responseId;
+
+var url = new URL(returnURL);
+url.searchParams.set("lat", lat);
+url.searchParams.set("lng", lng);
+
+setTimeout(function() {
+  window.location.href = url.toString();
+}, 800);
 
 });
 
