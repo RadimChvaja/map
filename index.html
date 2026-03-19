@@ -50,8 +50,8 @@ function getParam(name) {
 }
 
 // 🔹 GET RESPONSE ID
-var responseId = getParam("responseId");
-
+var responseId = getParam("responseId") || getParam("Q_R");
+  
 // 🔥 OPRAVA — správné názvy
 var response_id = getParam("response_id");
 var assignment_id = getParam("assignment_id");
